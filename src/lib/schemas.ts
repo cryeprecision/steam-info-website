@@ -56,6 +56,8 @@ export const summarySchema = z
   })
   .strict();
 
+export const vanityResponseSchema = z.string();
+
 export const responseSchema = z
   .object({
     steam_id: z.string(),

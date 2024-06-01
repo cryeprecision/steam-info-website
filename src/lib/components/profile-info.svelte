@@ -13,7 +13,7 @@
   import AvatarImage from '$lib/components/ui/avatar/avatar-image.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
   import { cn } from '$lib/utils';
-  import { Braces } from 'lucide-svelte';
+  import { Braces, ScanFace } from 'lucide-svelte';
   import Card from '$lib/components/ui/card/card.svelte';
   import Badge from '$lib/components/ui/badge/badge.svelte';
   import { format } from 'date-fns';
@@ -26,7 +26,6 @@
   import { countryCodeToName } from '$lib/country_code';
   import { formatDuration } from '$lib/format_duration';
   import * as Stats from 'simple-statistics';
-  import _ from 'lodash';
   import { Tooltip, TooltipTrigger } from './ui/tooltip';
   import TooltipContent from './ui/tooltip/tooltip-content.svelte';
   import { roundToNearestMultiple } from '$lib/round';
@@ -350,6 +349,11 @@
         <Button href={profile_url} target="_blank" variant="outline">
           <SteamLogo class="h-4 w-8" />
         </Button>
+        {#if friendInfos.type !== 'main'}
+          <Button href={`/profiles/${steam_id}`} target="_blank" variant="outline">
+            <ScanFace class="w-8 h-4" />
+          </Button>
+        {/if}
         <Dialog>
           <DialogTrigger class={buttonVariants({ variant: 'outline' })}>
             <Braces class="w-8 h-4" />
