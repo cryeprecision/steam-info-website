@@ -1,69 +1,15 @@
 import type { PageServerLoad } from './$types';
 import { env } from '$env/dynamic/private';
 import { z } from 'zod';
-import { responseSchema, vanityResponseSchema } from '$lib/schemas';
+import { responseSchema } from '$lib/schemas';
 import { error, redirect } from '@sveltejs/kit';
+import { STEAM_ID_RE, extractSteamId } from '$lib/extract-id';
 
 type InnerData = z.infer<typeof responseSchema>;
 type Data = { data: InnerData; elapsedMs: number };
 
 // https://kit.svelte.dev/docs/page-options
 export const prerender = false;
-
-const STEAM_ID_RE: RegExp = /^7\d{16}$/;
-const VANITY_URL_RE: RegExp = /^[a-zA-Z0-9_-]+$/;
-
-const VANITY_PREFIXES: string[] = [
-  'https://steamcommunity.com/id/',
-  'steamcommunity.com/id/',
-  'id/'
-];
-const ID_PREFIXES: string[] = [
-  'https://steamcommunity.com/profiles/',
-  'steamcommunity.com/profiles/',
-  'profiles/'
-];
-
-async function resolveVanityUrl(apiUrl: string, vanityUrl: string): Promise<string> {
-  const resp = await fetch(apiUrl + '/vanity/' + vanityUrl);
-  if (resp.status !== 200) {
-    error(500, await resp.text());
-  }
-
-  const json = await resp.json();
-  const parsed = vanityResponseSchema.safeParse(json);
-  if (!parsed.success) {
-    error(500, "Couldn't parse vanity response");
-  }
-
-  return parsed.data;
-}
-
-async function extractSteamId(apiUrl: string, path: string): Promise<string | null> {
-  for (const idPrefix of ID_PREFIXES) {
-    if (path.startsWith(idPrefix)) {
-      const suffix = path.substring(idPrefix.length);
-      return suffix.split('/')[0];
-    }
-  }
-
-  const vanityUrl = ((): string | null => {
-    for (const vanityPrefix of VANITY_PREFIXES) {
-      if (path.startsWith(vanityPrefix)) {
-        const suffix = path.substring(vanityPrefix.length);
-        return suffix.split('/')[0];
-      }
-    }
-    return null;
-  })();
-
-  if (vanityUrl === null || !VANITY_URL_RE.test(vanityUrl)) {
-    return null;
-  }
-
-  const steamId = await resolveVanityUrl(apiUrl, vanityUrl);
-  return steamId;
-}
 
 async function loadData(apiUrl: string, steamId: string): Promise<InnerData> {
   const resp = await fetch(apiUrl + '/json/' + steamId);

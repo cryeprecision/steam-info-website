@@ -29,9 +29,7 @@
   import { Tooltip, TooltipTrigger } from './ui/tooltip';
   import TooltipContent from './ui/tooltip/tooltip-content.svelte';
   import { roundToNearestMultiple } from '$lib/round';
-
-  const LEETIFY_PREFIX = 'https://leetify.com/public/profile/';
-  const FACEIT_PREFIX = 'https://www.faceit.com/en/search/player/';
+  import { FACEIT_PREFIX, LEETIFY_PREFIX } from '$lib/extract-id';
 
   export let banInfo: z.infer<typeof banSchema>;
   export let profileInfo: z.infer<typeof summarySchema>;
