@@ -18,11 +18,9 @@
   import CardHeader from '$lib/components/ui/card/card-header.svelte';
   import CardTitle from '$lib/components/ui/card/card-title.svelte';
   import CardContent from '$lib/components/ui/card/card-content.svelte';
-  import { Select, SelectValue } from '$lib/components/ui/select';
+  import { Select, SelectItem } from '$lib/components/ui/select';
   import SelectTrigger from '$lib/components/ui/select/select-trigger.svelte';
   import SelectContent from '$lib/components/ui/select/select-content.svelte';
-  import SelectItem from '$lib/components/ui/select/select-item.svelte';
-  import type { Selected } from 'bits-ui';
 
   type ProcessedData = {
     profileData: {
@@ -160,23 +158,17 @@
   export let data: PageData;
 
   let filter = writable('');
-  let sortDirection = writable<Selected<SortDirection>>({
-    value: sortDirections[0][0],
-    label: sortDirections[0][1]
-  });
-  let sortValue = writable<Selected<SortValue>>({
-    value: sortValues[0][0],
-    label: sortValues[0][1]
-  });
+  let sortDirection = writable<string>(sortDirections[0][0]);
+  let sortValue = writable<string>(sortValues[0][0]);
 
-  const setSortDirection = (val: Selected<unknown> | undefined) => {
-    if (val !== undefined) {
-      $sortDirection = val as Selected<SortDirection>;
+  const setSortDirection = (val: string) => {
+    if (val !== '') {
+      $sortDirection = val[0];
     }
   };
-  const setSortValue = (val: Selected<unknown> | undefined) => {
-    if (val !== undefined) {
-      $sortValue = val as Selected<SortValue>;
+  const setSortValue = (val: string) => {
+    if (val !== '') {
+      $sortValue = val[0];
     }
   };
 
@@ -184,7 +176,7 @@
   $: ({ friendsData, profileData, requestsUsed, filteredFriendsData } = processData(
     innerData,
     $filter,
-    { direction: $sortDirection.value, value: $sortValue.value }
+    { direction: $sortDirection as SortDirection, value: $sortValue as SortValue }
   ));
 
   const perPage = 12;
@@ -230,20 +222,16 @@
         <Input bind:value={$filter} placeholder="Search..." class="pl-9" />
       </div>
       <div class="grid md:grid-cols-2 gap-2">
-        <Select onSelectedChange={setSortDirection} selected={$sortDirection}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
+        <Select type="single" onValueChange={setSortDirection} value={$sortDirection}>
+          <SelectTrigger></SelectTrigger>
           <SelectContent>
             {#each sortDirections as [value, label]}
               <SelectItem {value}>{label}</SelectItem>
             {/each}
           </SelectContent>
         </Select>
-        <Select onSelectedChange={setSortValue} selected={$sortValue}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
+        <Select type="single" onValueChange={setSortValue} value={$sortValue}>
+          <SelectTrigger></SelectTrigger>
           <SelectContent>
             {#each sortValues as [value, label]}
               <SelectItem {value}>{label}</SelectItem>
@@ -259,38 +247,39 @@
       {perPage}
       {siblingCount}
       page={$currentPage}
-      let:pages
       onPageChange={(page) => {
         $currentPage = Math.min(page, maxPages);
       }}
     >
-      <PaginationContent>
-        <PaginationItem>
-          <PaginationPrevButton>
-            <ChevronLeft class="w-4 h-4" />
-            <span>Previous</span>
-          </PaginationPrevButton>
-        </PaginationItem>
-        {#each pages as page (page.key)}
-          {#if page.type === 'ellipsis'}
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-          {:else}
-            <PaginationItem>
-              <PaginationLink {page} isActive={$currentPage === page.value}>
-                {page.value}
-              </PaginationLink>
-            </PaginationItem>
-          {/if}
-        {/each}
-        <PaginationItem>
-          <PaginationNextButton>
-            <span class="hidden sm:block">Next</span>
-            <ChevronRight class="h-4 w-4" />
-          </PaginationNextButton>
-        </PaginationItem>
-      </PaginationContent>
+      {#snippet children({ pages })}
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevButton>
+              <ChevronLeft class="w-4 h-4" />
+              <span>Previous</span>
+            </PaginationPrevButton>
+          </PaginationItem>
+          {#each pages as page (page.key)}
+            {#if page.type === 'ellipsis'}
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            {:else}
+              <PaginationItem>
+                <PaginationLink {page} isActive={$currentPage === page.value}>
+                  {page.value}
+                </PaginationLink>
+              </PaginationItem>
+            {/if}
+          {/each}
+          <PaginationItem>
+            <PaginationNextButton>
+              <span class="hidden sm:block">Next</span>
+              <ChevronRight class="h-4 w-4" />
+            </PaginationNextButton>
+          </PaginationItem>
+        </PaginationContent>
+      {/snippet}
     </Pagination>
   </div>
   {#if friendsData !== null && filteredFriendsData !== null}
