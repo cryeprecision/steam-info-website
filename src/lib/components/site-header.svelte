@@ -12,7 +12,7 @@
 <header class="w-full p-2">
   <nav class="flex items-center justify-center flex-wrap gap-2">
     <Button href="https://www.counter-strike.net/news/updates" target="_blank" variant="outline">
-      <CsLogo class="h-4 mr-2" />
+      <CsLogo class="min-w-8 mr-2" />
       Changelog
     </Button>
     <Button href="https://steamdb.info/app/730/" target="_blank" variant="outline">

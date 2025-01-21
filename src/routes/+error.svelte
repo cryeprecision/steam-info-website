@@ -1,10 +1,10 @@
 <script>
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
   import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
   import Alert from '$lib/components/ui/alert/alert.svelte';
   import { TriangleAlert } from 'lucide-svelte';
-  $: ({ error, status } = $page);
+  const { error, status } = page;
 </script>
 
 <svelte:head>

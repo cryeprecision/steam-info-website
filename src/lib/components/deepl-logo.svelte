@@ -1,6 +1,5 @@
 <script lang="ts">
-  let className: string | null | undefined = undefined;
-  export { className as class };
+  const { class: className }: { class?: string } = $props();
 </script>
 
 <svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0.19 0 53.81 67.53" class={className}>
