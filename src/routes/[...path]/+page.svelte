@@ -4,29 +4,14 @@
   import { ChevronLeft, ChevronRight, Search } from 'lucide-svelte';
   import type { z } from 'zod';
   import { banSchema, summarySchema, type FriendsData } from '$lib/schemas';
-  import Input from '$lib/components/ui/input/input.svelte';
   import Fuse from 'fuse.js';
-  import Pagination from '$lib/components/ui/pagination/pagination.svelte';
-  import PaginationContent from '$lib/components/ui/pagination/pagination-content.svelte';
-  import PaginationItem from '$lib/components/ui/pagination/pagination-item.svelte';
-  import PaginationPrevButton from '$lib/components/ui/pagination/pagination-prev-button.svelte';
-  import PaginationEllipsis from '$lib/components/ui/pagination/pagination-ellipsis.svelte';
-  import PaginationLink from '$lib/components/ui/pagination/pagination-link.svelte';
-  import PaginationNextButton from '$lib/components/ui/pagination/pagination-next-button.svelte';
-  import { writable } from 'svelte/store';
-  import Card from '$lib/components/ui/card/card.svelte';
-  import CardHeader from '$lib/components/ui/card/card-header.svelte';
-  import CardTitle from '$lib/components/ui/card/card-title.svelte';
-  import CardContent from '$lib/components/ui/card/card-content.svelte';
-  import { Select, SelectItem } from '$lib/components/ui/select';
-  import SelectTrigger from '$lib/components/ui/select/select-trigger.svelte';
-  import SelectContent from '$lib/components/ui/select/select-content.svelte';
+  import { Input } from '$lib/components/ui/input';
+  import * as Pagination from '$lib/components/ui/pagination';
+  import * as Card from '$lib/components/ui/card';
+  import * as Select from '$lib/components/ui/select';
 
   type ProcessedData = {
-    profileData: {
-      bans: z.infer<typeof banSchema>;
-      summary: z.infer<typeof summarySchema>;
-    };
+    profileData: { bans: z.infer<typeof banSchema>; summary: z.infer<typeof summarySchema> };
     friendsData: FriendsData[] | null;
     filteredFriendsData: FriendsData[] | null;
     requestsUsed: number;
@@ -39,32 +24,27 @@
     | 'number_of_game_bans'
     | 'friends_since'
     | 'steam_id';
-  const sortValues: [SortValue, string][] = [
-    ['days_since_last_ban', 'Days Since Last Ban'],
-    ['community_banned', 'Community Banned'],
-    ['number_of_vac_bans', 'Number of VAC Bans'],
-    ['number_of_game_bans', 'Number of Game Bans'],
-    ['friends_since', 'Friends Since'],
-    ['steam_id', 'Steam ID']
-  ];
-
   type SortDirection = 'ascending' | 'descending';
-  const sortDirections: [SortDirection, string][] = [
-    ['ascending', 'Ascending'],
-    ['descending', 'Descending']
+  type SortOptions = { value: SortValue; direction: SortDirection };
+
+  const sortValues: { value: SortValue; label: string }[] = [
+    { value: 'days_since_last_ban', label: 'Days Since Last Ban' },
+    { value: 'community_banned', label: 'Community Banned' },
+    { value: 'number_of_vac_bans', label: 'Number of VAC Bans' },
+    { value: 'number_of_game_bans', label: 'Number of Game Bans' },
+    { value: 'friends_since', label: 'Friends Since' },
+    { value: 'steam_id', label: 'Steam ID' }
+  ];
+  const sortDirections: { value: SortDirection; label: string }[] = [
+    { value: 'ascending', label: 'Ascending' },
+    { value: 'descending', label: 'Descending' }
   ];
 
-  type SortOptions = {
-    value: SortValue;
-    direction: SortDirection;
-  };
-
-  function sortFriendsData(
-    sortOptions: SortOptions
-  ): (lhs: FriendsData, rhs: FriendsData) => number {
+  function sortFriendsData({
+    direction,
+    value
+  }: SortOptions): (lhs: FriendsData, rhs: FriendsData) => number {
     return (lhs: FriendsData, rhs: FriendsData): number => {
-      const { direction, value } = sortOptions;
-
       if (direction === 'ascending') {
         [lhs, rhs] = [rhs, lhs];
       }
@@ -155,40 +135,46 @@
     return { profileData, friendsData, filteredFriendsData, requestsUsed };
   }
 
-  export let data: PageData;
+  const { data }: { data: PageData } = $props();
 
-  let filter = writable('');
-  let sortDirection = writable<string>(sortDirections[0][0]);
-  let sortValue = writable<string>(sortValues[0][0]);
+  let filter = $state('');
+
+  let sortDirection = $state<SortDirection>(sortDirections[0].value);
+  let sortDirectionTrigger = $derived(
+    sortDirections.find(({ value }) => value === sortDirection)?.label
+  );
+
+  let sortValue = $state<SortValue>(sortValues[0].value);
+  let sortValueTrigger = $derived(sortValues.find(({ value }) => value === sortValue)?.label);
 
   const setSortDirection = (val: string) => {
     if (val !== '') {
-      $sortDirection = val[0];
+      sortDirection = val[0] as SortDirection;
     }
   };
   const setSortValue = (val: string) => {
     if (val !== '') {
-      $sortValue = val[0];
+      sortValue = val[0] as SortValue;
     }
   };
 
-  $: ({ data: innerData } = data);
-  $: ({ friendsData, profileData, requestsUsed, filteredFriendsData } = processData(
-    innerData,
-    $filter,
-    { direction: $sortDirection as SortDirection, value: $sortValue as SortValue }
-  ));
+  const { data: innerData } = data;
+  const { friendsData, profileData, requestsUsed, filteredFriendsData } = $derived(
+    processData(innerData, filter, { direction: sortDirection, value: sortValue })
+  );
 
   const perPage = 12;
   const siblingCount = 2;
-  let currentPage = writable(1);
-  $: count = filteredFriendsData?.length ?? 0;
-  $: maxPages = Math.max(1, Math.ceil(count / perPage));
-  $: {
-    $currentPage = Math.min(maxPages, $currentPage);
-  }
-  $: itemsOnCurrentPage =
-    filteredFriendsData?.slice(($currentPage - 1) * perPage, $currentPage * perPage) ?? [];
+  let currentPage = $state(1);
+
+  const count = $derived(filteredFriendsData?.length ?? 0);
+  const maxPages = $derived(Math.max(1, Math.ceil(count / perPage)));
+  $effect(() => {
+    currentPage = Math.min(currentPage, maxPages);
+  });
+  const itemsOnCurrentPage = $derived(
+    filteredFriendsData?.slice((currentPage - 1) * perPage, currentPage * perPage) ?? []
+  );
 </script>
 
 <svelte:head>
@@ -199,15 +185,15 @@
 
 <div class="grid grid-cols-1 xl:grid-cols-3 md:grid-cols-2 gap-2">
   <div class="col-span-1 xl:col-span-3 md:col-span-2">
-    <Card>
-      <CardHeader>
-        <CardTitle>Metadata</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card.Root>
+      <Card.Header>
+        <Card.Title>Metadata</Card.Title>
+      </Card.Header>
+      <Card.Content>
         Loading this page used <b>{requestsUsed}</b> requests to the Steam API and took
         <b>{data.elapsedMs.toFixed(1)}ms</b>
-      </CardContent>
-    </Card>
+      </Card.Content>
+    </Card.Root>
   </div>
   <ProfileInfo
     profileInfo={profileData.summary}
@@ -219,68 +205,68 @@
     <div class="grid md:grid-cols-3 gap-2">
       <div class="md:col-span-2">
         <Search class="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input bind:value={$filter} placeholder="Search..." class="pl-9" />
+        <Input bind:value={filter} placeholder="Search..." class="pl-9" />
       </div>
       <div class="grid md:grid-cols-2 gap-2">
-        <Select type="single" onValueChange={setSortDirection} value={$sortDirection}>
-          <SelectTrigger></SelectTrigger>
-          <SelectContent>
-            {#each sortDirections as [value, label]}
-              <SelectItem {value}>{label}</SelectItem>
+        <Select.Root type="single" bind:value={sortDirection}>
+          <Select.Trigger>{sortDirectionTrigger}</Select.Trigger>
+          <Select.Content>
+            {#each sortDirections as { value, label } (value)}
+              <Select.Item {value}>{label}</Select.Item>
             {/each}
-          </SelectContent>
-        </Select>
-        <Select type="single" onValueChange={setSortValue} value={$sortValue}>
-          <SelectTrigger></SelectTrigger>
-          <SelectContent>
-            {#each sortValues as [value, label]}
-              <SelectItem {value}>{label}</SelectItem>
+          </Select.Content>
+        </Select.Root>
+        <Select.Root type="single" bind:value={sortValue}>
+          <Select.Trigger>{sortValueTrigger}</Select.Trigger>
+          <Select.Content>
+            {#each sortValues as { value, label } (value)}
+              <Select.Item {value}>{label}</Select.Item>
             {/each}
-          </SelectContent>
-        </Select>
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
   </div>
   <div class="col-span-1 xl:col-span-3 md:col-span-2">
-    <Pagination
+    <Pagination.Root
       count={Math.max(1, count)}
       {perPage}
       {siblingCount}
-      page={$currentPage}
+      page={currentPage}
       onPageChange={(page) => {
-        $currentPage = Math.min(page, maxPages);
+        currentPage = Math.min(page, maxPages);
       }}
     >
       {#snippet children({ pages })}
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevButton>
+        <Pagination.Content>
+          <Pagination.Item>
+            <Pagination.PrevButton>
               <ChevronLeft class="w-4 h-4" />
               <span>Previous</span>
-            </PaginationPrevButton>
-          </PaginationItem>
+            </Pagination.PrevButton>
+          </Pagination.Item>
           {#each pages as page (page.key)}
             {#if page.type === 'ellipsis'}
-              <PaginationItem>
-                <PaginationEllipsis />
-              </PaginationItem>
+              <Pagination.Item>
+                <Pagination.Ellipsis />
+              </Pagination.Item>
             {:else}
-              <PaginationItem>
-                <PaginationLink {page} isActive={$currentPage === page.value}>
+              <Pagination.Item>
+                <Pagination.Link {page} isActive={currentPage === page.value}>
                   {page.value}
-                </PaginationLink>
-              </PaginationItem>
+                </Pagination.Link>
+              </Pagination.Item>
             {/if}
           {/each}
-          <PaginationItem>
-            <PaginationNextButton>
+          <Pagination.Item>
+            <Pagination.NextButton>
               <span class="hidden sm:block">Next</span>
               <ChevronRight class="h-4 w-4" />
-            </PaginationNextButton>
-          </PaginationItem>
-        </PaginationContent>
+            </Pagination.NextButton>
+          </Pagination.Item>
+        </Pagination.Content>
       {/snippet}
-    </Pagination>
+    </Pagination.Root>
   </div>
   {#if friendsData !== null && filteredFriendsData !== null}
     {#if friendsData.length !== 0}

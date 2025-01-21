@@ -29,29 +29,32 @@
   import { Tooltip, TooltipTrigger } from './ui/tooltip';
   import TooltipContent from './ui/tooltip/tooltip-content.svelte';
   import { roundToNearestMultiple } from '$lib/round';
-  import { FACEIT_PREFIX, LEETIFY_PREFIX } from '$lib/extract-id';
+  import { FACEIT_PREFIX, LEETIFY_PREFIX, CS_STATS_PREFIX } from '$lib/extract-id';
+  import CsStatsLogo from './cs-stats-logo.svelte';
 
-  export let banInfo: z.infer<typeof banSchema>;
-  export let profileInfo: z.infer<typeof summarySchema>;
-  export let friendInfos:
-    | {
-        type: 'main';
-        data: FriendsData[] | null;
-      }
-    | {
-        type: 'friend';
-        data: FriendsData[];
-        friendInfo: z.infer<typeof friendSchema>;
-        mainProfile: {
-          bans: z.infer<typeof banSchema>;
-          summary: z.infer<typeof summarySchema>;
+  interface Props {
+    banInfo: z.infer<typeof banSchema>;
+    profileInfo: z.infer<typeof summarySchema>;
+    friendInfos:
+      | {
+          type: 'main';
+          data: FriendsData[] | null;
+        }
+      | {
+          type: 'friend';
+          data: FriendsData[];
+          friendInfo: z.infer<typeof friendSchema>;
+          mainProfile: {
+            bans: z.infer<typeof banSchema>;
+            summary: z.infer<typeof summarySchema>;
+          };
         };
-      };
+    class?: string;
+  }
 
-  let className: string | null | undefined = undefined;
-  export { className as class };
+  const { banInfo, profileInfo, friendInfos, class: className }: Props = $props();
 
-  $: ({
+  const {
     persona_name,
     avatar_medium,
     avatar_full,
@@ -64,16 +67,17 @@
     persona_state,
     time_created,
     profile_state
-  } = profileInfo);
-  $: ({
+  } = profileInfo;
+
+  const {
     community_banned,
     days_since_last_ban,
     economy_ban,
     number_of_game_bans,
     number_of_vac_bans
-  } = banInfo);
+  } = banInfo;
 
-  $: friendInfosMainData = (() => {
+  const friendInfosMainData = $derived.by(() => {
     if (friendInfos.type !== 'main' || friendInfos.data === null || friendInfos.data.length === 0) {
       return null;
     }
@@ -109,9 +113,9 @@
       bannedFriendsRatio,
       friendAccountAgeStats
     };
-  })();
+  });
 
-  $: friendInfosFriendData = (() => {
+  const friendInfosFriendData = $derived.by(() => {
     if (friendInfos.type !== 'friend' || friendInfos.data.length === 0) {
       return null;
     }
@@ -144,9 +148,13 @@
     );
 
     return { durationQuantile, accountAgeQuantile };
-  })();
+  });
 
-  $: [leetifyUrl, faceitUrl] = [LEETIFY_PREFIX + steam_id, FACEIT_PREFIX + steam_id];
+  const [leetifyUrl, faceitUrl, csStatsUrl] = $derived([
+    LEETIFY_PREFIX + steam_id,
+    FACEIT_PREFIX + steam_id,
+    CS_STATS_PREFIX + steam_id
+  ]);
 </script>
 
 <Card class={className}>
@@ -343,6 +351,9 @@
         </Button>
         <Button href={leetifyUrl} target="_blank" variant="outline">
           <LeetifyLogo class="h-4 w-8" />
+        </Button>
+        <Button href={csStatsUrl} target="_blank" variant="outline">
+          <CsStatsLogo class="h-4 w-8" />
         </Button>
         <Button href={profile_url} target="_blank" variant="outline">
           <SteamLogo class="h-4 w-8" />

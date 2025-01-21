@@ -6,6 +6,7 @@ export const VANITY_URL_RE: RegExp = /^[a-zA-Z0-9_-]+$/;
 
 export const LEETIFY_PREFIX = 'https://leetify.com/public/profile/';
 export const FACEIT_PREFIX = 'https://www.faceit.com/en/search/player/';
+export const CS_STATS_PREFIX = 'https://csstats.gg/player/';
 
 const VANITY_PREFIXES: string[] = [
   'https://steamcommunity.com/id/',
