@@ -10,13 +10,6 @@
   import * as Card from '$lib/components/ui/card';
   import * as Select from '$lib/components/ui/select';
 
-  type ProcessedData = {
-    profileData: { bans: z.infer<typeof banSchema>; summary: z.infer<typeof summarySchema> };
-    friendsData: FriendsData[] | null;
-    filteredFriendsData: FriendsData[] | null;
-    requestsUsed: number;
-  };
-
   type SortValue =
     | 'days_since_last_ban'
     | 'community_banned'
@@ -85,11 +78,7 @@
       return Number(BigInt(rhs.summary.steam_id) - BigInt(lhs.summary.steam_id));
     };
   }
-  function processData(
-    data: PageData['data'],
-    filter: string,
-    sortOptions: SortOptions
-  ): ProcessedData {
+  function processData(data: PageData['data'], filter: string, sortOptions: SortOptions) {
     const { steam_id, friends, bans, summaries } = data;
     const profileData = { bans: bans[steam_id], summary: summaries[steam_id] };
 
@@ -97,22 +86,22 @@
       if (friends === null) {
         return [null, null];
       }
+
+      // Map friends to their bans and summaries and sort them
       const friendsData = Object.entries(friends).map(([steamId, friendInfo]) => {
         return { bans: bans[steamId], summary: summaries[steamId], friendInfo };
       });
       friendsData.sort(sortFriendsData(sortOptions));
 
+      // Fuzzy search the friends list prioritizing exact matches
       const filteredFriendsData = (() => {
-        if (filter === '') {
-          return friendsData;
-        }
+        if (filter === '') return friendsData;
+
         const exactMatches = friendsData.filter(
           ({ summary: { steam_id, persona_name, real_name } }) =>
             steam_id === filter || persona_name === filter || real_name === filter
         );
-        if (exactMatches.length !== 0) {
-          return exactMatches;
-        }
+        if (exactMatches.length !== 0) return exactMatches;
 
         const fuse = new Fuse(friendsData, {
           keys: ['summary.steam_id', 'summary.persona_name', 'summary.real_name'],
@@ -129,8 +118,7 @@
     const requestsUsed =
       1 + // resolve the vanity url
       1 + // get the friends list
-      batchRequests + // get the ban info for each profile
-      batchRequests; // get the player summary for each profile
+      2 * batchRequests; // get the ban info and player summary for each profile
 
     return { profileData, friendsData, filteredFriendsData, requestsUsed };
   }
@@ -141,22 +129,13 @@
 
   let sortDirection = $state<SortDirection>(sortDirections[0].value);
   let sortDirectionTrigger = $derived(
-    sortDirections.find(({ value }) => value === sortDirection)?.label
+    sortDirections.find(({ value }) => value === sortDirection)?.label ?? 'Select a sort direction'
   );
 
   let sortValue = $state<SortValue>(sortValues[0].value);
-  let sortValueTrigger = $derived(sortValues.find(({ value }) => value === sortValue)?.label);
-
-  const setSortDirection = (val: string) => {
-    if (val !== '') {
-      sortDirection = val[0] as SortDirection;
-    }
-  };
-  const setSortValue = (val: string) => {
-    if (val !== '') {
-      sortValue = val[0] as SortValue;
-    }
-  };
+  let sortValueTrigger = $derived(
+    sortValues.find(({ value }) => value === sortValue)?.label ?? 'Select a sort value'
+  );
 
   const { data: innerData } = data;
   const { friendsData, profileData, requestsUsed, filteredFriendsData } = $derived(
@@ -207,6 +186,7 @@
         <Search class="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input bind:value={filter} placeholder="Search..." class="pl-9" />
       </div>
+
       <div class="grid md:grid-cols-2 gap-2">
         <Select.Root type="single" bind:value={sortDirection}>
           <Select.Trigger>{sortDirectionTrigger}</Select.Trigger>
@@ -216,6 +196,7 @@
             {/each}
           </Select.Content>
         </Select.Root>
+
         <Select.Root type="single" bind:value={sortValue}>
           <Select.Trigger>{sortValueTrigger}</Select.Trigger>
           <Select.Content>

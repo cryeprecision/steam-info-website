@@ -9,7 +9,7 @@ type InnerData = z.infer<typeof responseSchema>;
 type Data = { data: InnerData; elapsedMs: number };
 
 // https://kit.svelte.dev/docs/page-options
-export const prerender = false;
+// export const prerender = false;
 
 async function loadData(apiUrl: string, steamId: string): Promise<InnerData> {
   const resp = await fetch(apiUrl + '/json/' + steamId);
@@ -18,11 +18,14 @@ async function loadData(apiUrl: string, steamId: string): Promise<InnerData> {
   }
 
   const json = await resp.json();
-  const parsed_ = responseSchema.safeParse(json);
-  if (!parsed_.success) {
+
+  let parsed;
+  try {
+    parsed = responseSchema.parse(json);
+  } catch (err) {
+    console.error(err);
     error(500, "Couldn't parse json response");
   }
-  const parsed = parsed_.data;
 
   // sanitize result for deleted steam profiles since they still show up as friends
   if (parsed.friends !== null) {
